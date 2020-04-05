@@ -402,6 +402,9 @@ void dump_node(yajl_gen gen, struct Con *con, bool inplace_restart) {
     ystr("urgent");
     y(bool, con->urgent);
 
+    ystr("zoomed");
+    y(bool, con->zoomed);
+
     if (!TAILQ_EMPTY(&(con->marks_head))) {
         ystr("marks");
         y(array_open);
@@ -579,6 +582,9 @@ void dump_node(yajl_gen gen, struct Con *con, bool inplace_restart) {
 
     ystr("fullscreen_mode");
     y(integer, con->fullscreen_mode);
+
+    ystr("zoomed");
+    y(bool, con->zoomed);
 
     ystr("sticky");
     y(bool, con->sticky);
@@ -889,6 +895,9 @@ IPC_HANDLER(get_workspaces) {
 
             ystr("urgent");
             y(bool, ws->urgent);
+
+            ystr("zoomed");
+            y(bool, ws->zoomed);
 
             y(map_close);
         }

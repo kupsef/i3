@@ -213,6 +213,7 @@ void con_detach(Con *con) {
         TAILQ_REMOVE(&(con->parent->nodes_head), con, nodes);
         TAILQ_REMOVE(&(con->parent->focus_head), con, focused);
     }
+    con_disable_zoom(con);
 }
 
 /*
@@ -481,6 +482,50 @@ Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode) {
         entry = TAILQ_FIRST(&bfs_head);
         current = entry->con;
         if (current != con && current->fullscreen_mode == fullscreen_mode) {
+            /* empty the queue */
+            while (!TAILQ_EMPTY(&bfs_head)) {
+                entry = TAILQ_FIRST(&bfs_head);
+                TAILQ_REMOVE(&bfs_head, entry, entries);
+                free(entry);
+            }
+            return current;
+        }
+
+        TAILQ_REMOVE(&bfs_head, entry, entries);
+        free(entry);
+
+        TAILQ_FOREACH(child, &(current->nodes_head), nodes) {
+            entry = smalloc(sizeof(struct bfs_entry));
+            entry->con = child;
+            TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
+        }
+
+        TAILQ_FOREACH(child, &(current->floating_head), floating_windows) {
+            entry = smalloc(sizeof(struct bfs_entry));
+            entry->con = child;
+            TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
+        }
+    }
+
+    return NULL;
+}
+
+/*
+ * Returns the first zoom node below this node.
+ *
+ */
+Con *con_get_zoom_con(Con *con) {
+    Con *current, *child;
+
+    TAILQ_HEAD(bfs_head, bfs_entry) bfs_head = TAILQ_HEAD_INITIALIZER(bfs_head);
+    struct bfs_entry *entry = smalloc(sizeof(struct bfs_entry));
+    entry->con = con;
+    TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
+
+    while (!TAILQ_EMPTY(&bfs_head)) {
+        entry = TAILQ_FIRST(&bfs_head);
+        current = entry->con;
+        if (current != con && current->zoomed == true) {
             /* empty the queue */
             while (!TAILQ_EMPTY(&bfs_head)) {
                 entry = TAILQ_FIRST(&bfs_head);
@@ -1111,6 +1156,69 @@ void con_disable_fullscreen(Con *con) {
     }
 
     con_set_fullscreen_mode(con, CF_NONE);
+}
+
+/* Zoom */
+
+void con_toggle_zoom(Con *con) {
+    if (con->type == CT_WORKSPACE) {
+        DLOG("You cannot make a workspace fullscreen.\n");
+        return;
+    }
+
+    DLOG("toggling zoom for %p / %s\n", con, con->name);
+
+    if (con->zoomed == false)
+        con_enable_zoom(con);
+    else
+        con_disable_zoom(con);
+}
+
+void con_enable_zoom(Con *con) {
+    if (con->type == CT_WORKSPACE || con_is_floating(con)) {
+        DLOG("You cannot make a workspace or floating container zoom.\n");
+        return;
+    }
+
+    DLOG("enable zoom for %p / %s\n", con, con->name);
+
+    if (con->zoomed == true) {
+        DLOG("zoom already enabled for %p / %s\n", con, con->name);
+        return;
+    }
+
+    Con *ws = con_get_workspace(con);
+
+    /* Disable any zoom container that would conflict the new one. */
+    if (ws->zoomed) {
+        Con *zoom = con_get_zoom_con(ws);
+        con_disable_zoom(zoom);
+    } else {
+        ws->zoomed = true;
+        ipc_send_workspace_event("zoomed", ws, NULL);
+    }
+
+    con->zoomed = true;
+    ipc_send_window_event("zoomed", con);
+}
+
+void con_disable_zoom(Con *con) {
+    if (con->type == CT_WORKSPACE) {
+        DLOG("You cannot make a workspace zoom.\n");
+        return;
+    }
+
+    DLOG("disabling fullscreen for %p / %s\n", con, con->name);
+
+    if (con->zoomed == false) {
+        DLOG("zoom already disabled for %p / %s\n", con, con->name);
+        return;
+    }
+    con->zoomed = false;
+    ipc_send_window_event("zoomed", con);
+    Con *ws = con_get_workspace(con);
+    ws->zoomed = false;
+    ipc_send_workspace_event("zoomed", ws, NULL);
 }
 
 static bool _con_move_to_con(Con *con, Con *target, bool behind_focused, bool fix_coordinates, bool dont_warp, bool ignore_focus, bool fix_percentage) {

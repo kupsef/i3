@@ -122,6 +122,12 @@ Con *con_parent_with_orientation(Con *con, orientation_t orientation);
 Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode);
 
 /**
+ * Returns the first zoom node below this node.
+ *
+ */
+Con *con_get_zoom_con(Con *con);
+
+/**
  * Returns the fullscreen node that covers the given workspace if it exists.
  * This is either a CF_GLOBAL fullscreen container anywhere or a CF_OUTPUT
  * fullscreen container in the workspace.
@@ -316,6 +322,25 @@ void con_enable_fullscreen(Con *con, fullscreen_mode_t fullscreen_mode);
  *
  */
 void con_disable_fullscreen(Con *con);
+
+/**
+ * Toggles zoom mode for the given container. Zoom mode will not be
+ * entered when there already is a zoom container on this workspace.
+ *
+ */
+void con_toggle_zoom(Con *con);
+
+/**
+ * Enables zoom mode for the given container, if necessary.
+ *
+ */
+void con_enable_zoom(Con *con);
+
+/**
+ * Disables zoom mode for the given container, if necessary.
+ *
+ */
+void con_disable_zoom(Con *con);
 
 /**
  * Moves the given container to the currently focused container on the given

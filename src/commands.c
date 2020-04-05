@@ -1415,6 +1415,31 @@ void cmd_fullscreen(I3_CMD, const char *action, const char *fullscreen_mode) {
 }
 
 /*
+* Implementation of 'zoom enable|disable|toggle'
+*
+*/
+void cmd_zoom(I3_CMD, const char *action) {
+    DLOG("%s zoom", action);
+    owindow *current;
+
+    HANDLE_EMPTY_MATCH;
+
+    TAILQ_FOREACH(current, &owindows, owindows) {
+        DLOG("matching: %p / %s\n", current->con, current->con->name);
+        if (strcmp(action, "toggle") == 0) {
+            con_toggle_zoom(current->con);
+        } else if (strcmp(action, "enable") == 0) {
+            con_enable_zoom(current->con);
+        } else if (strcmp(action, "disable") == 0) {
+            con_disable_zoom(current->con);
+        }
+    }
+
+    cmd_output->needs_tree_render = true;
+    ysuccess(true);
+}
+
+/*
  * Implementation of 'sticky enable|disable|toggle'.
  *
  */

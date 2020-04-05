@@ -16,6 +16,9 @@
 #include <yajl/yajl_parse.h>
 #include <yajl/yajl_version.h>
 
+
+#define ZOOM_INDICATOR "*Z"
+
 /* A datatype to pass through the callbacks to save the state */
 struct workspaces_json_params {
     struct ws_head *workspaces;
@@ -25,7 +28,7 @@ struct workspaces_json_params {
 };
 
 /*
- * Parse a boolean value (visible, focused, urgent)
+ * Parse a boolean value (visible, focused, zoomed, urgent)
  *
  */
 static int workspaces_boolean_cb(void *params_, int val) {
@@ -45,6 +48,12 @@ static int workspaces_boolean_cb(void *params_, int val) {
 
     if (!strcmp(params->cur_key, "urgent")) {
         params->workspaces_walk->urgent = val;
+        FREE(params->cur_key);
+        return 1;
+    }
+
+    if (!strcmp(params->cur_key, "zoomed")) {
+        params->workspaces_walk->zoomed = val;
         FREE(params->cur_key);
         return 1;
     }
@@ -136,6 +145,15 @@ static int workspaces_string_cb(void *params_, const unsigned char *val, size_t 
         params->workspaces_walk->name_width =
             predict_text_width(params->workspaces_walk->name);
 
+        /* Save zoomed name and width */
+        const char* name_utf8 = i3string_as_utf8(params->workspaces_walk->name);
+        char name_z_utf8[sizeof(name_utf8) + sizeof(ZOOM_INDICATOR)];
+        strcpy(name_z_utf8, name_utf8);
+        strcat(name_z_utf8, ZOOM_INDICATOR);
+        params->workspaces_walk->name_z = i3string_from_utf8(name_z_utf8);
+        i3string_set_markup(params->workspaces_walk->name_z, i3string_is_markup(params->workspaces_walk->name));
+        params->workspaces_walk->name_z_width = predict_text_width(params->workspaces_walk->name_z);
+
         DLOG("Got workspace canonical: %s, name: '%s', name_width: %d, glyphs: %zu\n",
              params->workspaces_walk->canonical_name,
              i3string_as_utf8(params->workspaces_walk->name),
@@ -180,8 +198,10 @@ static int workspaces_start_map_cb(void *params_) {
         new_workspace = smalloc(sizeof(i3_ws));
         new_workspace->num = -1;
         new_workspace->name = NULL;
+        new_workspace->name_z = NULL;
         new_workspace->visible = 0;
         new_workspace->focused = 0;
+        new_workspace->zoomed = 0;
         new_workspace->urgent = 0;
         memset(&new_workspace->rect, 0, sizeof(rect));
         new_workspace->output = NULL;
@@ -267,6 +287,7 @@ void free_workspaces(void) {
         if (outputs_walk->workspaces != NULL && !TAILQ_EMPTY(outputs_walk->workspaces)) {
             TAILQ_FOREACH(ws_walk, outputs_walk->workspaces, tailq) {
                 I3STRING_FREE(ws_walk->name);
+                I3STRING_FREE(ws_walk->name_z);
                 FREE(ws_walk->canonical_name);
             }
             FREE_TAILQ(outputs_walk->workspaces, i3_ws);

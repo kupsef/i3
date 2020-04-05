@@ -29,6 +29,7 @@ state INITIAL:
   'kill' -> KILL
   'open' -> call cmd_open()
   'fullscreen' -> FULLSCREEN
+  'zoom' -> ZOOM
   'sticky' -> STICKY
   'split' -> SPLIT
   'floating' -> FLOATING
@@ -188,6 +189,11 @@ state FULLSCREEN_COMPAT:
       -> call cmd_fullscreen("toggle", $mode)
   end
       -> call cmd_fullscreen("toggle", "output")
+
+# zoom enable|disable|toggle
+state ZOOM:
+  action = 'enable', 'disable', 'toggle'
+      -> call cmd_zoom($action)
 
 # sticky enable|disable|toggle
 state STICKY:

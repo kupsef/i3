@@ -695,6 +695,9 @@ struct Con {
 
     fullscreen_mode_t fullscreen_mode;
 
+    /* Zoom state */
+    bool zoomed;
+
     /* Whether this window should stick to the glass. This corresponds to
      * the _NET_WM_STATE_STICKY atom and will only be respected if the
      * window is floating. */

@@ -489,7 +489,8 @@ static void handle_button(xcb_button_press_event_t *event) {
     i3_ws *cur_ws = NULL, *clicked_ws = NULL, *ws_walk;
 
     TAILQ_FOREACH(ws_walk, walk->workspaces, tailq) {
-        int w = 2 * logical_px(ws_hoff_px) + 2 * logical_px(1) + ws_walk->name_width;
+        int name_width = ws_walk->zoomed ? ws_walk->name_z_width : ws_walk->name_width;
+        int w = 2 * logical_px(ws_hoff_px) + 2 * logical_px(1) + name_width;
         if (x >= workspace_width && x <= workspace_width + w)
             clicked_ws = ws_walk;
         if (ws_walk->visible)
@@ -1896,9 +1897,20 @@ void draw_bars(bool unhide) {
 
         if (!config.disable_ws) {
             i3_ws *ws_walk;
+            i3String *name;
+            int name_width;
+
             TAILQ_FOREACH(ws_walk, outputs_walk->workspaces, tailq) {
+                if (ws_walk->zoomed) {
+                    name = ws_walk->name_z;
+                    name_width = ws_walk->name_z_width;
+                } else {
+                    name = ws_walk->name;
+                    name_width = ws_walk->name_width;
+                }
+
                 DLOG("Drawing button for WS %s at x = %d, len = %d\n",
-                     i3string_as_utf8(ws_walk->name), workspace_width, ws_walk->name_width);
+                     i3string_as_utf8(name), workspace_width, name_width);
                 color_t fg_color = colors.inactive_ws_fg;
                 color_t bg_color = colors.inactive_ws_bg;
                 color_t border_color = colors.inactive_ws_border;
@@ -1914,7 +1926,7 @@ void draw_bars(bool unhide) {
                     }
                 }
                 if (ws_walk->urgent) {
-                    DLOG("WS %s is urgent!\n", i3string_as_utf8(ws_walk->name));
+                    DLOG("WS %s is urgent!\n", i3string_as_utf8(name));
                     fg_color = colors.urgent_ws_fg;
                     bg_color = colors.urgent_ws_bg;
                     border_color = colors.urgent_ws_border;
@@ -1925,22 +1937,22 @@ void draw_bars(bool unhide) {
                 draw_util_rectangle(&(outputs_walk->buffer), border_color,
                                     workspace_width,
                                     logical_px(1),
-                                    ws_walk->name_width + 2 * logical_px(ws_hoff_px) + 2 * logical_px(1),
+                                    name_width + 2 * logical_px(ws_hoff_px) + 2 * logical_px(1),
                                     font.height + 2 * logical_px(ws_voff_px) - 2 * logical_px(1));
 
                 /* Draw the inside of the button. */
                 draw_util_rectangle(&(outputs_walk->buffer), bg_color,
                                     workspace_width + logical_px(1),
                                     2 * logical_px(1),
-                                    ws_walk->name_width + 2 * logical_px(ws_hoff_px),
+                                    name_width + 2 * logical_px(ws_hoff_px),
                                     font.height + 2 * logical_px(ws_voff_px) - 4 * logical_px(1));
 
-                draw_util_text(ws_walk->name, &(outputs_walk->buffer), fg_color, bg_color,
+                draw_util_text(name, &(outputs_walk->buffer), fg_color, bg_color,
                                workspace_width + logical_px(ws_hoff_px) + logical_px(1),
                                logical_px(ws_voff_px),
-                               ws_walk->name_width);
+                               name_width);
 
-                workspace_width += 2 * logical_px(ws_hoff_px) + 2 * logical_px(1) + ws_walk->name_width;
+                workspace_width += 2 * logical_px(ws_hoff_px) + 2 * logical_px(1) + name_width;
                 if (TAILQ_NEXT(ws_walk, tailq) != NULL)
                     workspace_width += logical_px(ws_spacing_px);
             }
